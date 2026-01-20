@@ -1,55 +1,83 @@
 import streamlit as st
+import random
 
-st.set_page_config(page_title="Mini Mario", layout="centered")
+st.set_page_config(page_title="Mario Streamlit", layout="centered")
 
-# --- Game state ---
-if "x" not in st.session_state:
-    st.session_state.x = 0
-    st.session_state.y = 0
+# ---------- INIT ----------
+if "player_y" not in st.session_state:
+    st.session_state.player_y = 0
     st.session_state.vy = 0
+    st.session_state.world_x = 0
     st.session_state.score = 0
+    st.session_state.game_over = False
 
-# --- Constants ---
+# ---------- CONSTANTS ----------
 GROUND = 0
 GRAVITY = -1
 JUMP_POWER = 8
+WORLD_WIDTH = 30
 
-# --- Controls ---
-st.title("🍄 Mini Mario (Streamlit Edition)")
-col1, col2, col3 = st.columns(3)
+# ---------- TITLE ----------
+st.title("🍄 Mario (Streamlit Edition)")
+st.caption("Jump on coins. Avoid enemies.")
+
+# ---------- CONTROLS ----------
+col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("⬅️ Left"):
-        st.session_state.x -= 1
-
-with col2:
-    if st.button("⬆️ Jump") and st.session_state.y == GROUND:
+    if st.button("⬆️ Jump") and st.session_state.player_y == GROUND and not st.session_state.game_over:
         st.session_state.vy = JUMP_POWER
 
-with col3:
-    if st.button("➡️ Right"):
-        st.session_state.x += 1
+with col2:
+    if st.button("🔄 Restart"):
+        st.session_state.clear()
+        st.rerun()
 
-# --- Physics ---
-st.session_state.vy += GRAVITY
-st.session_state.y += st.session_state.vy
+# ---------- PHYSICS ----------
+if not st.session_state.game_over:
+    st.session_state.vy += GRAVITY
+    st.session_state.player_y += st.session_state.vy
+    st.session_state.world_x += 1
 
-if st.session_state.y <= GROUND:
-    st.session_state.y = GROUND
+if st.session_state.player_y <= GROUND:
+    st.session_state.player_y = GROUND
     st.session_state.vy = 0
 
-# --- Display ---
-st.markdown(f"""
-### 🧍 Mario Position
-- X: **{st.session_state.x}**
-- Y: **{st.session_state.y}**
-""")
+# ---------- WORLD GENERATION ----------
+random.seed(st.session_state.world_x)
 
-# --- Simple world ---
-world = ["🟩"] * 20
-pos = max(0, min(19, st.session_state.x + 10))
-world[pos] = "🍄"
+world = ["🟩"] * WORLD_WIDTH
+player_pos = 5
 
+coin_pos = random.randint(10, 20)
+enemy_pos = random.randint(15, 25)
+
+# Coin
+if coin_pos < WORLD_WIDTH:
+    world[coin_pos] = "🪙"
+
+# Enemy
+if enemy_pos < WORLD_WIDTH:
+    world[enemy_pos] = "☠️"
+
+# Player
+world[player_pos] = "🍄"
+
+# ---------- COLLISIONS ----------
+if st.session_state.player_y == GROUND:
+    if player_pos == coin_pos:
+        st.session_state.score += 1
+    if player_pos == enemy_pos:
+        st.session_state.game_over = True
+
+# ---------- DISPLAY ----------
 st.markdown("".join(world))
 
-st.caption("Use the buttons to move Mario")
+st.markdown(f"""
+**Score:** {st.session_state.score}  
+**Height:** {st.session_state.player_y}
+""")
+
+if st.session_state.game_over:
+    st.error("💀 GAME OVER")
+    st.caption("Press Restart to play again")
