@@ -1,36 +1,55 @@
 import streamlit as st
-import pygame
-import numpy as np
-import os
 
-# This line tells Pygame to run without a monitor/window (essential for Streamlit Cloud)
-os.environ["SDL_VIDEODRIVER"] = "dummy"
+st.set_page_config(page_title="Mini Mario", layout="centered")
 
-st.title("Streamlit Mario")
+# --- Game state ---
+if "x" not in st.session_state:
+    st.session_state.x = 0
+    st.session_state.y = 0
+    st.session_state.vy = 0
+    st.session_state.score = 0
 
-# Initialize Pygame
-pygame.init()
-surface = pygame.Surface((600, 400))
+# --- Constants ---
+GROUND = 0
+GRAVITY = -1
+JUMP_POWER = 8
 
-# Game State
-if 'x' not in st.session_state:
-    st.session_state.x = 100
+# --- Controls ---
+st.title("🍄 Mini Mario (Streamlit Edition)")
+col1, col2, col3 = st.columns(3)
 
-# Controls
-col1, col2 = st.columns(2)
 with col1:
-    if st.button("Move Left"):
-        st.session_state.x -= 20
+    if st.button("⬅️ Left"):
+        st.session_state.x -= 1
+
 with col2:
-    if st.button("Move Right"):
-        st.session_state.x += 20
+    if st.button("⬆️ Jump") and st.session_state.y == GROUND:
+        st.session_state.vy = JUMP_POWER
 
-# Drawing
-surface.fill((107, 140, 255)) # Sky
-pygame.draw.rect(surface, (255, 0, 0), (st.session_state.x, 300, 30, 40)) # Mario
-pygame.draw.rect(surface, (34, 139, 34), (0, 340, 600, 60)) # Ground
+with col3:
+    if st.button("➡️ Right"):
+        st.session_state.x += 1
 
-# Display in Streamlit
-img_array = pygame.surfarray.array3d(surface)
-img_array = np.transpose(img_array, (1, 0, 2))
-st.image(img_array, use_container_width=True)
+# --- Physics ---
+st.session_state.vy += GRAVITY
+st.session_state.y += st.session_state.vy
+
+if st.session_state.y <= GROUND:
+    st.session_state.y = GROUND
+    st.session_state.vy = 0
+
+# --- Display ---
+st.markdown(f"""
+### 🧍 Mario Position
+- X: **{st.session_state.x}**
+- Y: **{st.session_state.y}**
+""")
+
+# --- Simple world ---
+world = ["🟩"] * 20
+pos = max(0, min(19, st.session_state.x + 10))
+world[pos] = "🍄"
+
+st.markdown("".join(world))
+
+st.caption("Use the buttons to move Mario")
