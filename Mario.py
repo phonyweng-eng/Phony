@@ -1,83 +1,95 @@
 import streamlit as st
 import random
 
-st.set_page_config(page_title="Mario Streamlit", layout="centered")
+st.set_page_config(page_title="Mario Game", layout="centered")
 
-# ---------- INIT ----------
-if "player_y" not in st.session_state:
-    st.session_state.player_y = 0
+# ---------------- STATE ----------------
+if "y" not in st.session_state:
+    st.session_state.y = 0
     st.session_state.vy = 0
-    st.session_state.world_x = 0
     st.session_state.score = 0
-    st.session_state.game_over = False
+    st.session_state.tick = 0
+    st.session_state.dead = False
 
-# ---------- CONSTANTS ----------
+# ---------------- CONSTANTS ----------------
 GROUND = 0
 GRAVITY = -1
-JUMP_POWER = 8
-WORLD_WIDTH = 30
+JUMP = 7
+WIDTH = 20
 
-# ---------- TITLE ----------
-st.title("🍄 Mario (Streamlit Edition)")
-st.caption("Jump on coins. Avoid enemies.")
+# ---------------- CONTROLS ----------------
+st.title("🍄 Mario (HTML Edition)")
+st.caption("Jump over enemies • Collect coins")
 
-# ---------- CONTROLS ----------
 col1, col2 = st.columns(2)
 
 with col1:
-    if st.button("⬆️ Jump") and st.session_state.player_y == GROUND and not st.session_state.game_over:
-        st.session_state.vy = JUMP_POWER
+    if st.button("⬆️ Jump") and st.session_state.y == GROUND and not st.session_state.dead:
+        st.session_state.vy = JUMP
 
 with col2:
     if st.button("🔄 Restart"):
         st.session_state.clear()
         st.rerun()
 
-# ---------- PHYSICS ----------
-if not st.session_state.game_over:
+# ---------------- GAME LOGIC ----------------
+if not st.session_state.dead:
     st.session_state.vy += GRAVITY
-    st.session_state.player_y += st.session_state.vy
-    st.session_state.world_x += 1
+    st.session_state.y += st.session_state.vy
+    st.session_state.tick += 1
 
-if st.session_state.player_y <= GROUND:
-    st.session_state.player_y = GROUND
+if st.session_state.y <= GROUND:
+    st.session_state.y = GROUND
     st.session_state.vy = 0
 
-# ---------- WORLD GENERATION ----------
-random.seed(st.session_state.world_x)
+random.seed(st.session_state.tick)
 
-world = ["🟩"] * WORLD_WIDTH
-player_pos = 5
+coin = random.randint(6, WIDTH - 2)
+enemy = random.randint(10, WIDTH - 1)
 
-coin_pos = random.randint(10, 20)
-enemy_pos = random.randint(15, 25)
+player_x = 2
 
-# Coin
-if coin_pos < WORLD_WIDTH:
-    world[coin_pos] = "🪙"
-
-# Enemy
-if enemy_pos < WORLD_WIDTH:
-    world[enemy_pos] = "☠️"
-
-# Player
-world[player_pos] = "🍄"
-
-# ---------- COLLISIONS ----------
-if st.session_state.player_y == GROUND:
-    if player_pos == coin_pos:
+# collision
+if st.session_state.y == GROUND:
+    if player_x == coin:
         st.session_state.score += 1
-    if player_pos == enemy_pos:
-        st.session_state.game_over = True
+    if player_x == enemy:
+        st.session_state.dead = True
 
-# ---------- DISPLAY ----------
-st.markdown("".join(world))
+# ---------------- WORLD RENDER ----------------
+world = ["⬜"] * WIDTH
+world[coin] = "🪙"
+world[enemy] = "👾"
+world[player_x] = "🍄"
 
-st.markdown(f"""
-**Score:** {st.session_state.score}  
-**Height:** {st.session_state.player_y}
-""")
+# ---------------- HTML ----------------
+html = f"""
+<style>
+.game {{
+    font-size: 36px;
+    background: linear-gradient(#87ceeb, #ffffff);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}}
+.info {{
+    font-size: 18px;
+    margin-top: 10px;
+}}
+.dead {{
+    color: red;
+    font-weight: bold;
+}}
+</style>
 
-if st.session_state.game_over:
-    st.error("💀 GAME OVER")
-    st.caption("Press Restart to play again")
+<div class="game">
+    <div>{"".join(world)}</div>
+    <div class="info">
+        Score: {st.session_state.score} <br>
+        Height: {st.session_state.y}
+    </div>
+    {"<div class='dead'>💀 GAME OVER</div>" if st.session_state.dead else ""}
+</div>
+"""
+
+st.markdown(html, unsafe_allow_html=True)
