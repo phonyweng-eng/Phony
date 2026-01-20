@@ -1,95 +1,115 @@
 import streamlit as st
-import random
 
 st.set_page_config(page_title="Mario Game", layout="centered")
 
-# ---------------- STATE ----------------
-if "y" not in st.session_state:
-    st.session_state.y = 0
-    st.session_state.vy = 0
-    st.session_state.score = 0
-    st.session_state.tick = 0
-    st.session_state.dead = False
+st.title("🍄 Mario Game (Real Version)")
+st.caption("Use ← → to move, SPACE to jump")
 
-# ---------------- CONSTANTS ----------------
-GROUND = 0
-GRAVITY = -1
-JUMP = 7
-WIDTH = 20
-
-# ---------------- CONTROLS ----------------
-st.title("🍄 Mario (HTML Edition)")
-st.caption("Jump over enemies • Collect coins")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("⬆️ Jump") and st.session_state.y == GROUND and not st.session_state.dead:
-        st.session_state.vy = JUMP
-
-with col2:
-    if st.button("🔄 Restart"):
-        st.session_state.clear()
-        st.rerun()
-
-# ---------------- GAME LOGIC ----------------
-if not st.session_state.dead:
-    st.session_state.vy += GRAVITY
-    st.session_state.y += st.session_state.vy
-    st.session_state.tick += 1
-
-if st.session_state.y <= GROUND:
-    st.session_state.y = GROUND
-    st.session_state.vy = 0
-
-random.seed(st.session_state.tick)
-
-coin = random.randint(6, WIDTH - 2)
-enemy = random.randint(10, WIDTH - 1)
-
-player_x = 2
-
-# collision
-if st.session_state.y == GROUND:
-    if player_x == coin:
-        st.session_state.score += 1
-    if player_x == enemy:
-        st.session_state.dead = True
-
-# ---------------- WORLD RENDER ----------------
-world = ["⬜"] * WIDTH
-world[coin] = "🪙"
-world[enemy] = "👾"
-world[player_x] = "🍄"
-
-# ---------------- HTML ----------------
-html = f"""
+game_html = """
+<!DOCTYPE html>
+<html>
+<head>
 <style>
-.game {{
-    font-size: 36px;
+canvas {
     background: linear-gradient(#87ceeb, #ffffff);
-    padding: 20px;
-    border-radius: 12px;
-    text-align: center;
-}}
-.info {{
-    font-size: 18px;
-    margin-top: 10px;
-}}
-.dead {{
-    color: red;
-    font-weight: bold;
-}}
+    border: 3px solid #000;
+}
 </style>
+</head>
+<body>
 
-<div class="game">
-    <div>{"".join(world)}</div>
-    <div class="info">
-        Score: {st.session_state.score} <br>
-        Height: {st.session_state.y}
-    </div>
-    {"<div class='dead'>💀 GAME OVER</div>" if st.session_state.dead else ""}
-</div>
+<canvas id="game" width="800" height="300"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+    x: 50,
+    y: 200,
+    w: 30,
+    h: 40,
+    vy: 0,
+    onGround: false
+};
+
+const gravity = 0.8;
+const jumpPower = -12;
+const speed = 4;
+
+const platforms = [
+    {x: 0, y: 240, w: 800, h: 60},
+    {x: 300, y: 180, w: 120, h: 20},
+    {x: 520, y: 140, w: 120, h: 20}
+];
+
+let keys = {};
+
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
+
+function update() {
+    // movement
+    if (keys["ArrowRight"]) player.x += speed;
+    if (keys["ArrowLeft"]) player.x -= speed;
+    if (keys["Space"] && player.onGround) {
+        player.vy = jumpPower;
+        player.onGround = false;
+    }
+
+    // gravity
+    player.vy += gravity;
+    player.y += player.vy;
+
+    player.onGround = false;
+
+    // collision
+    platforms.forEach(p => {
+        if (
+            player.x < p.x + p.w &&
+            player.x + player.w > p.x &&
+            player.y < p.y + p.h &&
+            player.y + player.h > p.y
+        ) {
+            if (player.vy > 0) {
+                player.y = p.y - player.h;
+                player.vy = 0;
+                player.onGround = true;
+            }
+        }
+    });
+
+    // bounds
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.w)
+        player.x = canvas.width - player.w;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // platforms
+    ctx.fillStyle = "#228B22";
+    platforms.forEach(p =>
+        ctx.fillRect(p.x, p.y, p.w, p.h)
+    );
+
+    // player
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
 """
 
-st.markdown(html, unsafe_allow_html=True)
+st.components.v1.html(game_html, height=350)
